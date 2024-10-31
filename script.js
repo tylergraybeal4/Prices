@@ -7,26 +7,40 @@ class CryptoTracker {
         this.cryptoContainer = document.getElementById('crypto-container');
         this.loadingElement = document.getElementById('loading');
         this.errorElement = document.getElementById('error-message');
-        this.errorNotification = document.getElementById('error-notification');
         this.currentDateTimeElement = document.getElementById('current-date-time');
         this.cryptos = [];
         this.selectedApi = 'coingecko';
-        this.page = 1; // For pagination if needed
+        this.page = 1;
 
-        // Back to Top button
+        // Cache for search results
+        this.searchCache = new Map();
+        this.debounceTimeout = null;
+
         this.backToTopButton = document.getElementById('back-to-top');
         this.backToTopButton.addEventListener('click', () => this.scrollToTop());
         window.addEventListener('scroll', () => this.toggleBackToTopButton());
 
         document.getElementById('api-selector').addEventListener('change', (e) => {
             this.selectedApi = e.target.value;
-            this.page = 1; // Reset page number on API change
-            this.cryptos = []; // Clear existing cryptos
+            this.page = 1;
+            this.cryptos = [];
             this.fetchCryptoData();
         });
 
         document.getElementById('search-bar').addEventListener('input', (e) => {
-            this.filterCryptos(e.target.value);
+            clearTimeout(this.debounceTimeout);
+            const query = e.target.value.trim();
+
+            // Clear results if search is empty
+            if (!query) {
+                this.renderCryptos(this.cryptos);
+                return;
+            }
+
+            // Add debounce to prevent too many API calls
+            this.debounceTimeout = setTimeout(() => {
+                this.searchCrypto(query);
+            }, 300);
         });
 
         document.getElementById('load-more').addEventListener('click', () => {
@@ -64,10 +78,9 @@ class CryptoTracker {
             if (!response.ok) throw new Error('Failed to fetch cryptocurrency data');
 
             const data = await response.json();
-            console.log("Fetched data:", data);
             const newCryptos = this.parseApiData(data);
-            this.cryptos = this.cryptos.concat(newCryptos); // Accumulate new data
-            this.renderCryptos(this.cryptos); // Render all cryptos
+            this.cryptos = this.cryptos.concat(newCryptos);
+            this.renderCryptos(this.cryptos);
         } catch (error) {
             this.errorElement.innerText = error.message;
         } finally {
@@ -76,32 +89,34 @@ class CryptoTracker {
     }
 
     loadMore() {
-        this.page += 1; // Increment page number
-        this.fetchCryptoData(); // Fetch next page
+        this.page += 1;
+        this.fetchCryptoData();
     }
 
     parseApiData(data) {
         try {
             switch (this.selectedApi) {
                 case 'coingecko':
+                    if (!Array.isArray(data)) return [];
                     return data.map(crypto => ({
                         name: crypto.name,
-                        symbol: crypto.symbol,
-                        price: crypto.current_price,
-                        marketCap: crypto.market_cap,
-                        volume: crypto.total_volume,
-                        logo: crypto.image,
-                        priceChange: crypto.price_change_percentage_24h || 0 // Default to 0 if undefined
+                        symbol: crypto.symbol.toUpperCase(),
+                        price: crypto.current_price || 0,
+                        marketCap: crypto.market_cap || 0,
+                        volume: crypto.total_volume || 0,
+                        logo: crypto.image || 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/128/color/generic.png',
+                        priceChange: crypto.price_change_percentage_24h || 0
                     }));
                 case 'coinlore':
-                    return data.data.map(crypto => ({
+                    const cryptos = Array.isArray(data) ? data : (data.data || []);
+                    return cryptos.map(crypto => ({
                         name: crypto.name,
-                        symbol: crypto.symbol,
-                        price: parseFloat(crypto.price_usd),
-                        marketCap: parseFloat(crypto.market_cap_usd),
-                        volume: parseFloat(crypto.volume24),
-                        logo: `https://www.coinlore.com/img/${crypto.nameid}.png`,
-                        priceChange: parseFloat(crypto.percent_change_24h) || 0 // Default to 0 if undefined
+                        symbol: crypto.symbol.toUpperCase(),
+                        price: parseFloat(crypto.price_usd) || 0,
+                        marketCap: parseFloat(crypto.market_cap_usd) || 0,
+                        volume: parseFloat(crypto.volume24) || 0,
+                        logo: `https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/128/color/${crypto.symbol.toLowerCase()}.png`,
+                        priceChange: parseFloat(crypto.percent_change_24h) || 0
                     }));
                 default:
                     return [];
@@ -112,31 +127,86 @@ class CryptoTracker {
         }
     }
 
+    async searchCrypto(query) {
+        if (query.length < 1) {
+            this.renderCryptos(this.cryptos);
+            return;
+        }
+
+        try {
+            this.loadingElement.style.display = 'block';
+            this.errorElement.innerHTML = '';
+
+            if (this.selectedApi === 'coingecko') {
+                // First, search for the coin to get its ID
+                const searchResponse = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`);
+                if (!searchResponse.ok) throw new Error('Search failed');
+                
+                const searchData = await searchResponse.json();
+                
+                if (searchData.coins && searchData.coins.length > 0) {
+                    // Get the IDs of the first 5 matching coins
+                    const coinIds = searchData.coins.slice(0, 5).map(coin => coin.id);
+                    
+                    // Fetch detailed data for these coins
+                    const marketDataResponse = await fetch(
+                        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds.join(',')}&order=market_cap_desc&sparkline=false`
+                    );
+                    
+                    if (!marketDataResponse.ok) throw new Error('Failed to fetch coin details');
+                    
+                    const marketData = await marketDataResponse.json();
+                    const parsedData = this.parseApiData(marketData);
+                    this.renderCryptos(parsedData);
+                } else {
+                    this.errorElement.innerText = 'No matching cryptocurrencies found';
+                    this.renderCryptos([]);
+                }
+            } else if (this.selectedApi === 'coinlore') {
+                const response = await fetch(`https://api.coinlore.net/api/tickers/?search=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error('Failed to fetch data from CoinLore');
+                const searchData = await response.json();
+
+                if (searchData && searchData.data && searchData.data.length > 0) {
+                    const newCryptos = this.parseApiData(searchData.data);
+                    this.renderCryptos(newCryptos);
+                } else {
+                    this.errorElement.innerText = 'No matching cryptocurrencies found';
+                    this.renderCryptos([]);
+                }
+            }
+        } catch (error) {
+            this.errorElement.innerText = error.message;
+            this.renderCryptos([]);
+        } finally {
+            this.loadingElement.style.display = 'none';
+        }
+    }
+
     renderCryptos(cryptos) {
-        this.cryptoContainer.innerHTML = ''; // Clear previous results
+        this.cryptoContainer.innerHTML = '';
+        
+        if (cryptos.length === 0) {
+            this.cryptoContainer.innerHTML = '<div class="no-results">No cryptocurrencies found</div>';
+            return;
+        }
+
         cryptos.forEach(crypto => {
             const card = document.createElement('div');
             card.className = 'crypto-card';
             card.innerHTML = `
-                <img src="${crypto.logo}" alt="${crypto.name} logo" class="crypto-logo">
+                <img src="${crypto.logo}" alt="${crypto.name} logo" class="crypto-logo" 
+                     onerror="this.src='https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/128/color/generic.png'">
                 <h2>${crypto.name} (${crypto.symbol})</h2>
-                <p>Price: $${crypto.price.toFixed(2)}</p>
-                <p>Market Cap: $${crypto.marketCap.toLocaleString()}</p>
-                <p>Volume (24h): $${crypto.volume.toLocaleString()}</p>
+                <p>Price: $${crypto.price > 0 ? crypto.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8}) : '0.00'}</p>
+                <p>Market Cap: $${crypto.marketCap > 0 ? crypto.marketCap.toLocaleString() : '0'}</p>
+                <p>Volume (24h): $${crypto.volume > 0 ? crypto.volume.toLocaleString() : '0'}</p>
                 <p class="${crypto.priceChange >= 0 ? 'price-change-positive' : 'price-change-negative'}">
-                    Change (24h): ${crypto.priceChange.toFixed(2)}%
+                    Change (24h): ${crypto.priceChange ? crypto.priceChange.toFixed(2) : '0.00'}%
                 </p>
             `;
             this.cryptoContainer.appendChild(card);
         });
-    }
-
-    filterCryptos(searchTerm) {
-        const filteredCryptos = this.cryptos.filter(crypto =>
-            crypto.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        this.renderCryptos(filteredCryptos);
     }
 }
 
