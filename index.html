@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Market Tracker</title>
+    <title>Cryptocurrency Market Tracker</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Top 100 Cryptocurrencies</h1>
-        <div id="loading">Loading cryptocurrency data...</div>
+        <h1>Cryptocurrency Market Tracker</h1>
+        <input type="text" id="search-bar" placeholder="Search for a cryptocurrency...">
         <div id="error-message"></div>
+        <div id="loading">Loading...</div>
         <div id="crypto-container" class="crypto-container"></div>
+        <div id="error-notification"></div> <!-- Notification for date and time -->
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
