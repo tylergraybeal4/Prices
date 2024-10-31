@@ -83,19 +83,65 @@ h1 {
 
 #error-notification {
     position: fixed;
-    top: 30px; /* Position it slightly below the top */
-    right: 20px; /* Align it to the right */
+    top: 30px;
+    right: 20px;
     background-color: rgba(39, 38, 38, 0.8);
     color: white;
     padding: 10px;
     border-radius: 5px;
-    display: none; /* Hidden by default */
-    transition: opacity 0.5s ease, visibility 0.5s ease; /* Add transitions for fade effect */
-    z-index: 1000; /* Ensure it appears above other content */
-    opacity: 0; /* Start hidden */
-    visibility: hidden; /* Ensure it's not interactive */
+    display: none;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
 }
 
+.current-date-time {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: #ffffff;
+    font-size: 0.9em;
+    z-index: 1000;
+}
+
+.back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    display: none; /* Initially hidden */
+    z-index: 1000;
+    transition: background-color 0.3s ease;
+}
+
+.back-to-top:hover {
+    background-color: #2980b9;
+}
+
+
+
+
+.load-more {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    cursor: pointer;
+    display: block;
+    margin: 20px auto;
+    font-size: 1em;
+}
+
+.load-more:hover {
+    background-color: #2980b9;
+}
 
 @media (max-width: 768px) {
     .crypto-container {
