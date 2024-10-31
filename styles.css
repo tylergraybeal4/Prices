@@ -1,0 +1,94 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f4f4f4;
+    line-height: 1.6;
+}
+
+.container {
+    width: 100%;
+    margin: 0 auto;
+}
+
+.crypto-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.crypto-card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.crypto-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.crypto-logo {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    margin-bottom: 15px;
+    object-fit: cover;
+}
+
+.price-change-positive {
+    color: #2ecc71;
+    font-weight: bold;
+}
+
+.price-change-negative {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+#loading {
+    text-align: center;
+    font-size: 1.5em;
+    margin-top: 50px;
+    color: #3498db;
+}
+
+#error-message {
+    color: #e74c3c;
+    text-align: center;
+    margin-top: 50px;
+    font-size: 1.2em;
+}
+
+.market-cap-heatmap {
+    width: 100%;
+    height: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.market-cap-bar {
+    height: 100%;
+    transition: width 0.5s ease;
+}
+
+.crypto-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+@media (max-width: 768px) {
+    .crypto-container {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+}
