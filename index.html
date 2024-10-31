@@ -9,11 +9,18 @@
 <body>
     <div class="container">
         <h1>Cryptocurrency Market Tracker</h1>
+        <select id="api-selector">
+            <option value="coingecko">CoinGecko</option>
+            <option value="coinlore">CoinLore</option>
+        </select>
         <input type="text" id="search-bar" placeholder="Search for a cryptocurrency...">
         <div id="error-message"></div>
         <div id="loading">Loading...</div>
         <div id="crypto-container" class="crypto-container"></div>
-        <div id="error-notification"></div> <!-- Notification for date and time -->
+        <button id="load-more" class="load-more">Load More</button>
+        <div id="error-notification"></div>
+        <div id="current-date-time" class="current-date-time"></div>
+        <button id="back-to-top" class="back-to-top">Back to Top</button>
     </div>
     <script src="script.js"></script>
 </body>
