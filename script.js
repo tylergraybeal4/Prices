@@ -2,7 +2,7 @@ class CryptoTracker {
     constructor() {
         this.apiUrls = {
             coingecko: 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=',
-            coinlore: 'https://api.coinlore.net/api/tickers/?start=0&limit=100'
+            coinlore: 'https://api.coinlore.com/api/tickers/?start=0&limit=100'  // Fixed URL
         };
         this.cryptoContainer = document.getElementById('crypto-container');
         this.loadingElement = document.getElementById('loading');
@@ -11,86 +11,143 @@ class CryptoTracker {
         this.cryptos = [];
         this.selectedApi = 'coingecko';
         this.page = 1;
+        this.searchTimeout = null;
+        this.isLoading = false;  // Add loading state flag
+        this.retryCount = 0;     // Add retry counter
+        this.maxRetries = 3;     // Maximum number of retries
+        this.retryDelay = 1000;  // Delay between retries in ms
 
-        // Cache for search results
+        // Implement request throttling
+        this.lastRequestTime = 0;
+        this.minRequestInterval = 1000; // Minimum time between requests in ms
+
+        // Enhanced cache with expiration
         this.searchCache = new Map();
-        this.debounceTimeout = null;
+        this.cacheExpiration = 5 * 60 * 1000; // 5 minutes
 
+        this.initializeEventListeners();
+        this.startTimeUpdater();
+        this.fetchCryptoData();
+    }
+
+    initializeEventListeners() {
+        // Back to top button
         this.backToTopButton = document.getElementById('back-to-top');
-        this.backToTopButton.addEventListener('click', () => this.scrollToTop());
+        this.backToTopButton?.addEventListener('click', () => this.scrollToTop());
         window.addEventListener('scroll', () => this.toggleBackToTopButton());
 
-        document.getElementById('api-selector').addEventListener('change', (e) => {
+        // API selector
+        document.getElementById('api-selector')?.addEventListener('change', (e) => {
             this.selectedApi = e.target.value;
             this.page = 1;
             this.cryptos = [];
             this.fetchCryptoData();
         });
 
-        document.getElementById('search-bar').addEventListener('input', (e) => {
-            clearTimeout(this.debounceTimeout);
-            const query = e.target.value.trim();
+        // Search bar with debouncing
+        const searchBar = document.getElementById('search-bar');
+        searchBar?.addEventListener('input', (e) => {
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
 
-            // Clear results if search is empty
+            const query = e.target.value.trim();
+            
             if (!query) {
                 this.renderCryptos(this.cryptos);
                 return;
             }
 
-            // Add debounce to prevent too many API calls
-            this.debounceTimeout = setTimeout(() => {
+            this.searchTimeout = setTimeout(() => {
                 this.searchCrypto(query);
-            }, 300);
+            }, 500);
         });
 
-        document.getElementById('load-more').addEventListener('click', () => {
-            this.loadMore();
+        // Load more button
+        document.getElementById('load-more')?.addEventListener('click', () => {
+            if (!this.isLoading) {
+                this.loadMore();
+            }
         });
-
-        this.startTimeUpdater();
-        this.fetchCryptoData();
     }
 
-    toggleBackToTopButton() {
-        this.backToTopButton.style.display = window.scrollY > 300 ? 'block' : 'none';
+    async throttleRequest() {
+        const now = Date.now();
+        const timeSinceLastRequest = now - this.lastRequestTime;
+        
+        if (timeSinceLastRequest < this.minRequestInterval) {
+            await new Promise(resolve => 
+                setTimeout(resolve, this.minRequestInterval - timeSinceLastRequest)
+            );
+        }
+        
+        this.lastRequestTime = Date.now();
     }
 
-    scrollToTop() {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    updateDateTime() {
-        const now = new Date();
-        this.currentDateTimeElement.innerText = `Current Date & Time: ${now.toLocaleString('en-US', {
-            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-        })}`;
-    }
-
-    startTimeUpdater() {
-        setInterval(() => this.updateDateTime(), 1000);
+    async fetchWithRetry(url, options = {}) {
+        let lastError;
+        
+        for (let i = 0; i < this.maxRetries; i++) {
+            try {
+                await this.throttleRequest();
+                const response = await fetch(url, options);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                lastError = error;
+                await new Promise(resolve => 
+                    setTimeout(resolve, this.retryDelay * Math.pow(2, i))
+                );
+            }
+        }
+        
+        throw lastError;
     }
 
     async fetchCryptoData() {
+        if (this.isLoading) return;
+        
         try {
+            this.isLoading = true;
             this.loadingElement.style.display = 'block';
             this.errorElement.innerHTML = '';
-            const response = await fetch(this.apiUrls[this.selectedApi] + this.page);
-            if (!response.ok) throw new Error('Failed to fetch cryptocurrency data');
+            
+            // Check cache
+            const cacheKey = `${this.selectedApi}_${this.page}`;
+            const cachedData = this.searchCache.get(cacheKey);
+            
+            if (cachedData && Date.now() - cachedData.timestamp < this.cacheExpiration) {
+                this.cryptos = this.cryptos.concat(cachedData.data);
+                this.renderCryptos(this.cryptos);
+                return;
+            }
 
-            const data = await response.json();
+            const url = this.selectedApi === 'coinlore' 
+                ? `${this.apiUrls.coinlore}&start=${(this.page - 1) * 100}`
+                : this.apiUrls.coingecko + this.page;
+
+            const data = await this.fetchWithRetry(url);
             const newCryptos = this.parseApiData(data);
+            
+            // Cache the fetched data with timestamp
+            this.searchCache.set(cacheKey, {
+                data: newCryptos,
+                timestamp: Date.now()
+            });
+            
             this.cryptos = this.cryptos.concat(newCryptos);
             this.renderCryptos(this.cryptos);
         } catch (error) {
-            this.errorElement.innerText = error.message;
+            this.errorElement.innerText = `Error: ${error.message}. Please try again later.`;
+            this.renderCryptos([]);
         } finally {
+            this.isLoading = false;
             this.loadingElement.style.display = 'none';
         }
-    }
-
-    loadMore() {
-        this.page += 1;
-        this.fetchCryptoData();
     }
 
     parseApiData(data) {
@@ -98,25 +155,25 @@ class CryptoTracker {
             switch (this.selectedApi) {
                 case 'coingecko':
                     if (!Array.isArray(data)) return [];
-                    return data.map(crypto => ({
+                    return data.map(crypto => this.formatCryptoData({
                         name: crypto.name,
-                        symbol: crypto.symbol.toUpperCase(),
-                        price: crypto.current_price || 0,
-                        marketCap: crypto.market_cap || 0,
-                        volume: crypto.total_volume || 0,
-                        logo: crypto.image || 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/128/color/generic.png',
-                        priceChange: crypto.price_change_percentage_24h || 0
+                        symbol: crypto.symbol?.toUpperCase(),
+                        price: crypto.current_price,
+                        marketCap: crypto.market_cap,
+                        volume: crypto.total_volume,
+                        logo: crypto.image,
+                        priceChange: crypto.price_change_percentage_24h
                     }));
                 case 'coinlore':
-                    const cryptos = Array.isArray(data) ? data : (data.data || []);
-                    return cryptos.map(crypto => ({
+                    const cryptos = data?.data || [];
+                    return cryptos.map(crypto => this.formatCryptoData({
                         name: crypto.name,
-                        symbol: crypto.symbol.toUpperCase(),
-                        price: parseFloat(crypto.price_usd) || 0,
-                        marketCap: parseFloat(crypto.market_cap_usd) || 0,
-                        volume: parseFloat(crypto.volume24) || 0,
-                        logo: `https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/128/color/${crypto.symbol.toLowerCase()}.png`,
-                        priceChange: parseFloat(crypto.percent_change_24h) || 0
+                        symbol: crypto.symbol?.toUpperCase(),
+                        price: parseFloat(crypto.price_usd),
+                        marketCap: parseFloat(crypto.market_cap_usd),
+                        volume: parseFloat(crypto.volume24),
+                        logo: `https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/128/color/${crypto.symbol?.toLowerCase()}.png`,
+                        priceChange: parseFloat(crypto.percent_change_24h)
                     }));
                 default:
                     return [];
@@ -127,66 +184,85 @@ class CryptoTracker {
         }
     }
 
+    formatCryptoData(crypto) {
+        return {
+            name: crypto.name || 'Unknown',
+            symbol: crypto.symbol || '???',
+            price: this.validateNumber(crypto.price),
+            marketCap: this.validateNumber(crypto.marketCap),
+            volume: this.validateNumber(crypto.volume),
+            logo: crypto.logo || 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/128/color/generic.png',
+            priceChange: this.validateNumber(crypto.priceChange)
+        };
+    }
+
+    validateNumber(value) {
+        const num = parseFloat(value);
+        return isNaN(num) ? 0 : num;
+    }
+
     async searchCrypto(query) {
-        if (query.length < 1) {
-            this.renderCryptos(this.cryptos);
-            return;
-        }
+        if (query.length < 2 || this.isLoading) return;
 
         try {
+            this.isLoading = true;
             this.loadingElement.style.display = 'block';
             this.errorElement.innerHTML = '';
 
+            const cacheKey = `search_${this.selectedApi}_${query}`;
+            const cachedResults = this.searchCache.get(cacheKey);
+            
+            if (cachedResults && Date.now() - cachedResults.timestamp < this.cacheExpiration) {
+                this.renderCryptos(cachedResults.data);
+                return;
+            }
+
+            let searchResults = [];
+            
             if (this.selectedApi === 'coingecko') {
-                // First, search for the coin to get its ID
-                const searchResponse = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`);
-                if (!searchResponse.ok) throw new Error('Search failed');
+                const searchData = await this.fetchWithRetry(
+                    `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`
+                );
                 
-                const searchData = await searchResponse.json();
-                
-                if (searchData.coins && searchData.coins.length > 0) {
-                    // Get the IDs of the first 5 matching coins
+                if (searchData.coins?.length > 0) {
                     const coinIds = searchData.coins.slice(0, 5).map(coin => coin.id);
-                    
-                    // Fetch detailed data for these coins
-                    const marketDataResponse = await fetch(
+                    const marketData = await this.fetchWithRetry(
                         `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds.join(',')}&order=market_cap_desc&sparkline=false`
                     );
-                    
-                    if (!marketDataResponse.ok) throw new Error('Failed to fetch coin details');
-                    
-                    const marketData = await marketDataResponse.json();
-                    const parsedData = this.parseApiData(marketData);
-                    this.renderCryptos(parsedData);
-                } else {
-                    this.errorElement.innerText = 'No matching cryptocurrencies found';
-                    this.renderCryptos([]);
+                    searchResults = this.parseApiData(marketData);
                 }
             } else if (this.selectedApi === 'coinlore') {
-                const response = await fetch(`https://api.coinlore.net/api/tickers/?search=${encodeURIComponent(query)}`);
-                if (!response.ok) throw new Error('Failed to fetch data from CoinLore');
-                const searchData = await response.json();
-
-                if (searchData && searchData.data && searchData.data.length > 0) {
-                    const newCryptos = this.parseApiData(searchData.data);
-                    this.renderCryptos(newCryptos);
-                } else {
-                    this.errorElement.innerText = 'No matching cryptocurrencies found';
-                    this.renderCryptos([]);
-                }
+                const searchData = await this.fetchWithRetry(
+                    `https://api.coinlore.com/api/tickers/?search=${encodeURIComponent(query)}`
+                );
+                searchResults = this.parseApiData(searchData);
             }
+
+            this.searchCache.set(cacheKey, {
+                data: searchResults,
+                timestamp: Date.now()
+            });
+
+            if (searchResults.length === 0) {
+                this.errorElement.innerText = 'No matching cryptocurrencies found';
+            }
+            
+            this.renderCryptos(searchResults);
         } catch (error) {
-            this.errorElement.innerText = error.message;
+            this.errorElement.innerText = `Search error: ${error.message}. Please try again later.`;
             this.renderCryptos([]);
         } finally {
+            this.isLoading = false;
             this.loadingElement.style.display = 'none';
         }
     }
 
     renderCryptos(cryptos) {
+        if (!this.cryptoContainer) return;
+        
         this.cryptoContainer.innerHTML = '';
         
-        if (cryptos.length === 0) {
+        if (!cryptos?.length) {
             this.cryptoContainer.innerHTML = '<div class="no-results">No cryptocurrencies found</div>';
             return;
         }
@@ -195,18 +271,69 @@ class CryptoTracker {
             const card = document.createElement('div');
             card.className = 'crypto-card';
             card.innerHTML = `
-                <img src="${crypto.logo}" alt="${crypto.name} logo" class="crypto-logo" 
+                <img src="${crypto.logo}" alt="${this.escapeHtml(crypto.name)} logo" class="crypto-logo" 
                      onerror="this.src='https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@master/128/color/generic.png'">
-                <h2>${crypto.name} (${crypto.symbol})</h2>
-                <p>Price: $${crypto.price > 0 ? crypto.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 8}) : '0.00'}</p>
-                <p>Market Cap: $${crypto.marketCap > 0 ? crypto.marketCap.toLocaleString() : '0'}</p>
-                <p>Volume (24h): $${crypto.volume > 0 ? crypto.volume.toLocaleString() : '0'}</p>
+                <h2>${this.escapeHtml(crypto.name)} (${this.escapeHtml(crypto.symbol)})</h2>
+                <p>Price: $${this.formatNumber(crypto.price, 8)}</p>
+                <p>Market Cap: $${this.formatNumber(crypto.marketCap, 0)}</p>
+                <p>Volume (24h): $${this.formatNumber(crypto.volume, 0)}</p>
                 <p class="${crypto.priceChange >= 0 ? 'price-change-positive' : 'price-change-negative'}">
-                    Change (24h): ${crypto.priceChange ? crypto.priceChange.toFixed(2) : '0.00'}%
+                    Change (24h): ${this.formatNumber(crypto.priceChange, 2)}%
                 </p>
             `;
             this.cryptoContainer.appendChild(card);
         });
+    }
+
+    escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    formatNumber(value, decimals = 2) {
+        const num = parseFloat(value);
+        if (isNaN(num)) return '0.00';
+        
+        return num.toLocaleString(undefined, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        });
+    }
+
+    toggleBackToTopButton() {
+        if (this.backToTopButton) {
+            this.backToTopButton.style.display = window.scrollY > 300 ? 'block' : 'none';
+        }
+    }
+
+    scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    updateDateTime() {
+        if (this.currentDateTimeElement) {
+            const now = new Date();
+            this.currentDateTimeElement.innerText = `Current Date & Time: ${now.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            })}`;
+        }
+    }
+
+    startTimeUpdater() {
+        this.updateDateTime();
+        setInterval(() => this.updateDateTime(), 1000);
+    }
+
+    loadMore() {
+        this.page += 1;
+        this.fetchCryptoData();
     }
 }
 
