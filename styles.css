@@ -104,6 +104,7 @@ h1 {
     gap: 20px;
     margin-top: 20px;
     width: 100%;
+    justify-content: center;
 }
 
 /* Crypto Card Styling */
@@ -117,6 +118,13 @@ h1 {
     position: relative;
     width: 100%;
     box-sizing: border-box;
+    border-style: solid;
+    border-width: 1px;
+    border-color: #1abc9c;
+}
+
+.crypto-card:hover {
+    box-shadow: 0px 0px 20px 0px #1abc9c50; /* Enhanced shadow */
 }
 
 /* Logo */
@@ -174,6 +182,30 @@ h1 {
     color: #e74c3c; /* Red */
 }
 
+
+
+/* Custom scrollbar for WebKit browsers */
+::-webkit-scrollbar {
+    width: 8px; /* Width of the scrollbar */
+}
+
+::-webkit-scrollbar-track {
+    background: #292929; /* Track color */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1abc9c; /* Scrollbar handle color */
+    border-color: #ffffff;
+    border-style: solid;
+    border-width: 0.12rem;
+    border-radius: 10px; /* Rounded corners */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #1abc9c69; /* Color on hover */
+}
+
+
 /* Media Queries */
 @media (min-width: 768px) {
     .controls {
@@ -203,13 +235,10 @@ h1 {
     }
 }
 
+
 /* Touch Device Optimizations */
 @media (hover: hover) {
-    .crypto-card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.5);
-    }
-
+   
     .crypto-logo:hover {
         transform: scale(1.1);
     }
