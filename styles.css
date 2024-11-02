@@ -1,3 +1,7 @@
+:root{
+    overflow: hidden;
+}
+
 /* General Styling */
 body {
     font-family: 'Poppins', sans-serif;
@@ -11,7 +15,6 @@ body {
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 }
 
 /* Current Date and Time - Positioned at top */
@@ -36,7 +39,6 @@ body {
     border-radius: 12px;
     background-color: rgba(30, 30, 30, 0.9);
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
 }
 
 /* Title */
