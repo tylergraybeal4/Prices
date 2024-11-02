@@ -259,5 +259,20 @@ class CryptoTracker {
         this.fetchCryptoData();
     }
 }
+// Format price to 2-3 decimal places
+function formatPrice(price) {
+    return price.toFixed(price < 1 ? 3 : 2);
+}
+
+// Apply positive or negative color class
+function updatePriceChange(element, change) {
+    if (change > 0) {
+        element.classList.add('price-change-positive');
+        element.classList.remove('price-change-negative');
+    } else {
+        element.classList.add('price-change-negative');
+        element.classList.remove('price-change-positive');
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => new CryptoTracker());
