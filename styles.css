@@ -2,6 +2,7 @@
     overflow-x: hidden;
 }
 
+
 /* General Styling */
 body {
     font-family: 'Poppins', sans-serif;
@@ -15,6 +16,7 @@ body {
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    
 }
 
 /* Current Date and Time - Positioned at top */
