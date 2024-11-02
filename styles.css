@@ -2,7 +2,6 @@
     overflow-x: hidden;
 }
 
-
 /* General Styling */
 body {
     font-family: 'Poppins', sans-serif;
@@ -16,7 +15,6 @@ body {
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    
 }
 
 /* Current Date and Time - Positioned at top */
@@ -29,7 +27,7 @@ body {
     font-size: clamp(0.8rem, 2.5vw, 0.9rem);
     border-bottom: 1px solid rgba(26, 188, 156, 0.3);
     margin: 0;
-    order: -1; /* Ensures it stays at the top */
+    order: -1;
 }
 
 /* Container */
@@ -82,10 +80,10 @@ h1 {
     border: 1px solid #1abc9c;
     border-radius: 30px;
     outline: none;
-    font-size: 16px; /* Prevents iOS zoom on focus */
+    font-size: 16px;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    -webkit-appearance: none; /* Removes default styling on iOS */
+    -webkit-appearance: none;
     appearance: none;
 }
 
@@ -101,41 +99,60 @@ h1 {
 .crypto-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-    gap: 20px;
+    gap: 25px;
     margin-top: 20px;
     width: 100%;
     justify-content: center;
 }
 
-/* Crypto Card Styling */
+/* Enhanced Crypto Card Styling */
 .crypto-card {
-    background-color: #292929;
-    border-radius: 15px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    padding: 20px;
+    background: linear-gradient(145deg, #2c2c2c, #242424);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    padding: 25px;
     text-align: center;
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     width: 100%;
     box-sizing: border-box;
-    border-style: solid;
-    border-width: 1px;
-    border-color: #1abc9c;
+    border: 1px solid rgba(26, 188, 156, 0.2);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+}
+
+.crypto-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, transparent, rgba(26, 188, 156, 0.1), transparent);
+    transform: translateX(-100%);
+    transition: 0.6s;
 }
 
 .crypto-card:hover {
-    box-shadow: 0px 0px 20px 0px #1abc9c50; /* Enhanced shadow */
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px rgba(26, 188, 156, 0.2);
+    border-color: rgba(26, 188, 156, 0.4);
 }
 
-/* Logo */
+.crypto-card:hover::before {
+    transform: translateX(100%);
+}
+
+/* Enhanced Logo */
 .crypto-logo {
-    width: clamp(40px, 8vw, 60px);
-    height: clamp(40px, 8vw, 60px);
+    width: clamp(50px, 10vw, 70px);
+    height: clamp(50px, 10vw, 70px);
     border-radius: 50%;
-    margin: 0 auto 20px;
+    margin: 0 auto 25px;
     object-fit: cover;
-    border: 2px solid #1abc9c;
-    transition: transform 0.3s;
+    border: 3px solid #1abc9c;
+    transition: all 0.4s ease;
+    box-shadow: 0 0 20px rgba(26, 188, 156, 0.2);
 }
 
 /* Message Styling */
@@ -150,7 +167,7 @@ h1 {
 /* Button Styling */
 .load-more,
 .back-to-top {
-    background-color: #1abc9c;
+    background: linear-gradient(45deg, #1abc9c, #16a085);
     color: white;
     border: none;
     border-radius: 30px;
@@ -159,8 +176,9 @@ h1 {
     cursor: pointer;
     display: inline-block;
     margin: 20px auto;
-    transition: background-color 0.3s, transform 0.2s;
+    transition: all 0.3s ease;
     -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 4px 15px rgba(26, 188, 156, 0.3);
 }
 
 /* Back to Top Button */
@@ -173,38 +191,37 @@ h1 {
     display: none;
 }
 
-/* Price Change Colors */
+/* Enhanced Price Change Colors */
 .price-change-positive {
-    color: #2ecc71; /* Green */
+    color: #2ecc71;
+    text-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
 }
 
 .price-change-negative {
-    color: #e74c3c; /* Red */
+    color: #e74c3c;
+    text-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
 }
-
-
 
 /* Custom scrollbar for WebKit browsers */
 ::-webkit-scrollbar {
-    width: 8px; /* Width of the scrollbar */
+    width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #292929; /* Track color */
+    background: #292929;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #1abc9c; /* Scrollbar handle color */
+    background: #1abc9c;
     border-color: #ffffff;
     border-style: solid;
     border-width: 0.12rem;
-    border-radius: 10px; /* Rounded corners */
+    border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #1abc9c69; /* Color on hover */
+    background: #1abc9c69;
 }
-
 
 /* Media Queries */
 @media (min-width: 768px) {
@@ -225,7 +242,7 @@ h1 {
     }
 
     .crypto-card {
-        padding: 15px;
+        padding: 20px;
     }
 
     .back-to-top {
@@ -235,18 +252,18 @@ h1 {
     }
 }
 
-
 /* Touch Device Optimizations */
 @media (hover: hover) {
-   
     .crypto-logo:hover {
-        transform: scale(1.1);
+        transform: scale(1.1) rotate(5deg);
+        box-shadow: 0 0 30px rgba(26, 188, 156, 0.3);
     }
 
     .load-more:hover,
     .back-to-top:hover {
-        background-color: #16a085;
+        background: linear-gradient(45deg, #16a085, #1abc9c);
         transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(26, 188, 156, 0.4);
     }
 }
 
